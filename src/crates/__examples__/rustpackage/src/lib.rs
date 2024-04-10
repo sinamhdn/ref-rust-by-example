@@ -1,0 +1,1 @@
+// by default cargo will see this file as a liberary crate named "rustpackage"

@@ -1,0 +1,80 @@
+Rust groups errors into two major categories: recoverable and unrecoverable errors. For a recoverable error, such as a file not found error, we most likely just want to report the problem to the user and retry the operation. Unrecoverable errors are always symptoms of bugs, like trying to access a location beyond the end of an array, and so we want to immediately stop the program.
+
+
+Rust doesn’t have exceptions. Instead, it has the type Result<T, E> for recoverable errors and the panic! macro that stops execution when the program encounters an unrecoverable error.
+
+
+There are two ways to cause a panic in practice: by taking an action that causes our code to panic (such as accessing an array past the end) or by explicitly calling the panic! macro.
+
+
+By default, these panics will print a failure message, unwind, clean up the stack, and quit.
+
+
+Via an environment variable, you can also have Rust display the call stack when a panic occurs to make it easier to track down the source of the panic.
+
+
+add this line to cargo.toml to make program close immediately on panic instead of unwinding and cleaning up memory
+[profile.release]
+panic = 'abort'
+
+
+we can use RUST_BACKTRACE environment variable to find source of panic
+RUST_BACKTRACE=1 cargo run
+
+
+the key to reading the backtrace is to start from the top and read until you see files you wrote. That’s the spot where the problem originated. The lines above that spot are code that your code has called; the lines below are code that called your code.
+
+
+In order to get backtraces with this information, debug symbols must be enabled. Debug symbols are enabled by default when using cargo build or cargo run without the --release flag, as we have here.
+
+
+we can use the Result type and the functions defined on it in many different situations where the successful value and error value we want to return may differ
+
+
+we dont need to use Result::OK(T), Result::Err(E), Option::Some(T), Option::None because their values are inside prelude we can just use OK(T), Err(E), Some(T), None
+
+
+In production-quality code, most Rustaceans choose expect rather than unwrap and give more context about why the operation is expected to always succeed. That way, if your assumptions are ever proven wrong, you have more information to use in debugging.
+
+
+There is a difference between what the match expression from Listing 9-6 does and what the ? operator does: error values that have the ? operator called on them go through the from function, defined in the From trait in the standard library, which is used to convert values from one type into another. When the ? operator calls the from function, the error type received is converted into the error type defined in the return type of the current function. This is useful when a function returns one error type to represent all the ways a function might fail, even if parts might fail for many different reasons.
+
+
+we could change the read_username_from_file function in Listing 9-7 to return a custom error type named OurError that we define. If we also define impl From<io::Error> for OurError to construct an instance of OurError from an io::Error, then the ? operator calls in the body of read_username_from_file will call from and convert the error types without needing to add any more code to the function.
+
+
+The ? operator can only be used in functions whose return type is compatible with the value the ? is used on. This is because the ? operator is defined to perform an early return of a value out of the function, in the same manner as the match expression we defined in Listing 9-6. In Listing 9-6, the match was using a Result value, and the early return arm returned an Err(e) value. The return type of the function has to be a Result so that it’s compatible with this return.
+
+
+we’re only allowed to use the ? operator in a function that returns Result, Option, or another type that implements FromResidual if return type is not Result change the return type to Result or handle error inside function with match
+
+
+Note that you can use the ? operator on a Result in a function that returns Result, and you can use the ? operator on an Option in a function that returns Option, but you can’t mix and match. The ? operator won’t automatically convert a Result to an Option or vice versa; in those cases, you can use methods like the ok method on Result or the ok_or method on Option to do the conversion explicitly.
+
+
+The Box<dyn Error> type is a trait object, which we’ll talk about in the “Using Trait Objects that Allow for Values of Different Types” section in Chapter 17. For now, you can read Box<dyn Error> to mean “any kind of error.” Using ? on a Result value in a main function with the error type Box<dyn Error> is allowed, because it allows any Err value to be returned early. Even though the body of this main function will only ever return errors of type std::io::Error, by specifying Box<dyn Error>, this signature will continue to be correct even if more code that returns other errors is added to the body of main.
+
+
+When a main function returns a Result<(), E>, the executable will exit with a value of 0 if main returns Ok(()) and will exit with a nonzero value if main returns an Err value. Executables written in C return integers when they exit: programs that exit successfully return the integer 0, and programs that error return some integer other than 0. Rust also returns integers from executables to be compatible with this convention.
+
+
+The main function may return any types that implement the '''std::process::Termination''' trait, which contains a function report that returns an ExitCode. Consult the standard library documentation for more information on implementing the Termination trait for your own types.
+
+
+returning Result is a good default choice when you’re defining a function that might fail
+
+
+in testing situations it is better to panic instead of Result or in situations where compiler cant decide if there is an error or not
+
+
+when testing or prototyping using unwrap and expect is prefered because we want to test code fast and dont need proper error handling
+
+
+Guidelines for Error Handling
+It’s advisable to have your code panic when it’s possible that your code could end up in a bad state. In this context, a bad state is when some assumption, guarantee, contract, or invariant has been broken, such as when invalid values, contradictory values, or missing values are passed to your code—plus one or more of the following:
+The bad state is something that is unexpected, as opposed to something that will likely happen occasionally, like a user entering data in the wrong format.
+Your code after this point needs to rely on not being in this bad state, rather than checking for the problem at every step.
+There’s not a good way to encode this information in the types you use
+
+
+Rust’s error handling features are designed to help you write more robust code. The panic! macro signals that your program is in a state it can’t handle and lets you tell the process to stop instead of trying to proceed with invalid or incorrect values. The Result enum uses Rust’s type system to indicate that operations might fail in a way that your code could recover from. You can use Result to tell code that calls your code that it needs to handle potential success or failure as well. Using panic! and Result in the appropriate situations will make your code more reliable in the face of inevitable problems.

@@ -1,0 +1,16 @@
+When you recognize situations in your code with multiple struct or enum definitions that differ only in the types of the values they hold, you can avoid duplication by using generic types instead.
+
+
+By declaring T as a generic type after impl, Rust can identify that the type in the angle brackets in Point is a generic type rather than a concrete type.
+
+
+Methods written within an impl that declares the generic type will be defined on any instance of the type, no matter what concrete type ends up substituting for the generic type.
+
+
+The purpose of this example is to demonstrate a situation in which some generic parameters are declared with impl and some are declared with the method definition. Here, the generic parameters X1 and Y1 are declared after impl because they go with the struct definition. The generic parameters X2 and Y2 are declared after fn mixup, because they’re only relevant to the method.
+
+
+we can define different generics for constructor and function, self will get impl generic type and other will get inputs generic type
+
+
+rust converts all generics to concrete types at compile time (Monomorphization)
