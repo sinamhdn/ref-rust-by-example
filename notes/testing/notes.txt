@@ -1,0 +1,127 @@
+Correctness in our programs is the extent to which our code does what we intend it to do. Rust is designed with a high degree of concern about the correctness of programs, but correctness is complex and not easy to prove. Rust’s type system shoulders a huge part of this burden, but the type system cannot catch everything. As such, Rust includes support for writing automated software tests.
+
+
+Tests are Rust functions that verify that the non-test code is functioning in the expected manner. The bodies of test functions typically perform these three actions:
+-Set up any needed data or state.
+-Run the code you want to test.
+-Assert the results are what you expect.
+
+
+At its simplest, a test in Rust is a function that’s annotated with the test attribute. Attributes are metadata about pieces of Rust code; one example is the derive attribute we used with structs in Chapter 5. To change a function into a test function, add #[test] on the line before fn. When you run your tests with the cargo test command, Rust builds a test runner binary that runs the annotated functions and reports on whether each test function passes or fails.
+
+
+We might also have non-test functions in the tests module to help set up common scenarios or perform common operations, so we always need to indicate which functions are tests.
+
+
+t’s possible to mark a test as ignored so it doesn’t run in a particular instance;
+We can also pass an argument to the cargo test command to run only tests whose name matches a string; this is called filtering.
+The 0 measured statistic is for benchmark tests that measure performance.
+
+
+Each test is run in a new thread, and when the main thread sees that a test thread has died, the test is marked as failed.
+
+
+Under the surface, the assert_eq! and assert_ne! macros use the operators == and !=, respectively. When the assertions fail, these macros print their arguments using debug formatting, which means the values being compared must implement the PartialEq and Debug traits. All primitive types and most of the standard library types implement these traits. For structs and enums that you define yourself, you’ll need to implement PartialEq to assert equality of those types. You’ll also need to implement Debug to print the values when the assertion fails.
+---[[[this is usually as straightforward as adding the #[derive(PartialEq, Debug)] annotation to your struct or enum definition]]]---
+
+
+Just as cargo run compiles your code and then runs the resulting binary, cargo test compiles your code in test mode and runs the resulting test binary. The default behavior of the binary produced by cargo test is to run all the tests in parallel and capture output generated during test runs, preventing the output from being displayed and making it easier to read the output related to the test results. You
+ can, however, specify command line options to change this default behavior.
+
+
+ Some command line options go to cargo test, and some go to the resulting test binary. To separate these two types of arguments, you list the arguments that go to cargo test followed by the separator -- and then the ones that go to the test binary. Running cargo test --help displays the options you can use with cargo test, and running cargo test -- --help displays the options you can use after the separator.
+
+
+ you can pass command line arguments to the compiler or run-time seperated with --
+ i.e. --> cargo test --benches -- --test-threads=1
+
+
+ Because the tests are running at the same time, you must make sure your tests don’t depend on each other or on any shared state, including a shared environment, such as the current working directory or environment variables.
+
+
+ $ cargo test -- --test-threads=1
+use this if want to run all tests on the same thread and one at a time
+we pass this argument to the test binary not the compiler
+
+
+$ cargo test -- --show-output
+use this if you want to see print outputs of the tests
+
+
+$ cargo test one_hundred --> if you want to run only some of the tests you can pass their names to the (we can only pass one test name like this)
+
+
+cargo test add --> we can also use part of the name of the test to search
+note that the module in which a test appears becomes part of the test’s name, so we can run all the tests in a module by filtering on the module’s name.
+
+
+$ cargo test -- --ignored --> run only tests marked by #[ignore]
+
+
+$ cargo test -- --include-ignored --> run all tests including ignored ones
+
+
+As mentioned at the start of the chapter, testing is a complex discipline, and different people use different terminology and organization. The Rust community thinks about tests in terms of two main categories: unit tests and integration tests. Unit tests are small and more focused, testing one module in isolation at a time, and can test private interfaces. Integration tests are entirely external to your library and use your code in the same way any other external code would, using only the public interface and potentially exercising multiple modules per test.
+
+
+The purpose of unit tests is to test each unit of code in isolation from the rest of the code to quickly pinpoint where code is and isn’t working as expected. You’ll put unit tests in the src directory in each file with the code that they’re testing. The convention is to create a module named tests in each file to contain the test functions and to annotate the module with cfg(test).
+
+
+
+The Rust Programming Language
+ 
+Test Organization
+As mentioned at the start of the chapter, testing is a complex discipline, and different people use different terminology and organization. The Rust community thinks about tests in terms of two main categories: unit tests and integration tests. Unit tests are small and more focused, testing one module in isolation at a time, and can test private interfaces. Integration tests are entirely external to your library and use your code in the same way any other external code would, using only the public interface and potentially exercising multiple modules per test.
+
+Writing both kinds of tests is important to ensure that the pieces of your library are doing what you expect them to, separately and together.
+
+Unit Tests
+The purpose of unit tests is to test each unit of code in isolation from the rest of the code to quickly pinpoint where code is and isn’t working as expected. You’ll put unit tests in the src directory in each file with the code that they’re testing. The convention is to create a module named tests in each file to contain the test functions and to annotate the module with cfg(test).
+
+The Tests Module and #[cfg(test)]
+The #[cfg(test)] annotation on the tests module tells Rust to compile and run the test code only when you run cargo test, not when you run cargo build.
+
+
+Because integration tests go in a different directory, they don’t need the #[cfg(test)] annotation. However, because unit tests go in the same files as the code, you’ll use #[cfg(test)] to specify that they shouldn’t be included in the compiled result.
+
+
+he attribute cfg stands for configuration and tells Rust that the following item should only be included given a certain configuration option. In this case, the configuration option is test, which is provided by Rust for compiling and running tests. By using the cfg attribute, Cargo compiles our test code only if we actively run the tests with cargo test. This includes any helper functions that might be within this module, in addition to the functions annotated with #[test].
+
+
+There’s debate within the testing community about whether or not private functions should be tested directly, and other languages make it difficult or impossible to test private functions. Regardless of which testing ideology you adhere to, Rust’s privacy rules do allow you to test private functions.
+
+
+In Rust, integration tests are entirely external to your library. They use your library in the same way any other code would, which means they can only call functions that are part of your library’s public API. Their purpose is to test whether many parts of your library work together correctly.
+
+
+for integration testing we add a tests directory
+rust will compile every file in tests directory to a test crate
+
+
+The three sections of output include the unit tests, the integration test, and the doc tests. Note that if any test in a section fails, the following sections will not be run. For example, if a unit test fails, there won’t be any output for integration and doc tests because those tests will only be run if all unit tests are passing.
+
+
+$ cargo test --test integration_test --> run a specific integration test file
+
+
+As you add more integration tests, you might want to make more files in the tests directory to help organize them; for example, you can group the test functions by the functionality they’re testing. As mentioned earlier, each file in the tests directory is compiled as its own separate crate, which is useful for creating separate scopes to more closely imitate the way end users will be using your crate. However, this means files in the tests directory don’t share the same behavior as files in src do
+
+
+because behavior inside tests folder is different from src if we want to add a module that is not a test file we cant simply use file name ew need to add a mod.rs instead
+test/common.rs --- wrong
+tests/common/mod.rs --- correct
+rust treat this file as a module and don't compile it to it's own crate
+
+
+Files in subdirectories of the tests directory don’t get compiled as separate crates or have sections in the test output.
+
+
+If our project is a binary crate that only contains a src/main.rs file and doesn’t have a src/lib.rs file, we can’t create integration tests in the tests directory and bring functions defined in the src/main.rs file into scope with a use statement. Only library crates expose functions that other crates can use; binary crates are meant to be run on their own.
+
+
+in rust we cant do integration test in binary crate
+binary crate only uses codes written in library crate
+so try to write main logic in library crate and just use it in binary crate
+
+
+Even though Rust’s type system and ownership rules help prevent some kinds of bugs, tests are still important to reduce logic bugs having to do with how your code is expected to behave.
