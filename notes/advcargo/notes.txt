@@ -1,0 +1,93 @@
+In Rust, release profiles are predefined and customizable profiles with different configurations that allow a programmer to have more control over various options for compiling code. Each profile is configured independently of the others. ----> $ cargo build
+
+
+Cargo has two main profiles: the dev profile Cargo uses when you run cargo build and the release profile Cargo uses when you run cargo build --release. The dev profile is defined with good defaults for development, and the release profile has good defaults for release builds. ----> $ cargo build --release
+
+
+Cargo has default settings for each of the profiles that apply when you haven't explicitly added any [profile.*] sections in the project’s Cargo.toml file. By adding [profile.*] sections for any profile you want to customize, you override any subset of the default settings.
+
+
+[profile.dev]
+opt-level = 0
+[profile.release]
+opt-level = 3
+----------------------------------------------------------------
+The opt-level setting controls the number of optimizations Rust will apply to your code, with a range of 0 to 3. Applying more optimizations extends compiling time, so if you’re in development and compiling your code often, you’ll want fewer optimizations to compile faster even if the resulting code runs slower. The default opt-level for dev is therefore 0. When you’re ready to release your code, it’s best to spend more time compiling. You’ll only compile in release mode once, but you’ll run the compiled program many times, so release mode trades longer compile time for code that runs faster. That is why the default opt-level for the release profile is 3.
+
+
+You can override a default setting by adding a different value for it in Cargo.toml
+
+
+if you want to publish your package socument code with ///
+this will create documentation comment that supports markdown and generates html documentation
+
+
+to generate html document run ----> $ cargo doc
+
+
+create documentation for current crate and open in browser ---> $ cargo doc --open
+
+
+We used the # Examples Markdown heading in Listing 14-1 to create a section in the HTML with the title “Examples.” Here are some other sections that crate authors commonly use in their documentation:
+--------------------------
+Panics: The scenarios in which the function being documented could panic. Callers of the function who don’t want their programs to panic should make sure they don’t call the function in these situations.
+---------------
+Errors: If the function returns a Result, describing the kinds of errors that might occur and what conditions might cause those errors to be returned can be helpful to callers so they can write code to handle the different kinds of errors in different ways.
+---------------
+Safety: If the function is unsafe to call (we discuss unsafety in Chapter 19), there should be a section explaining why the function is unsafe and covering the invariants that the function expects callers to uphold.
+
+
+Documentation comments within items are useful for describing crates and modules especially. Use them to explain the overall purpose of the container to help your users understand the crate’s organization.
+
+
+if the structure of you pckage is complicated users may need to use multiple paths to reach to item they want
+you can use "use pub" to reexport items at another location
+this way you actual structure will be different than the exposed structure
+
+
+Creating a useful public API structure is more of an art than a science, and you can iterate to find the API that works best for your users. Choosing pub use gives you flexibility in how you structure your crate internally and decouples that internal structure from what you present to your users. Look at some of the code of crates you’ve installed to see if their internal structure differs from their public API.
+
+
+$ cargo login abcdefghijklmnopqrstuvwxyz012345 ----> login to crates.io using api key
+
+
+Let’s say you have a crate you want to publish. Before publishing, you’ll need to add some metadata in the [package] section of the crate’s Cargo.toml file.
+-------------------------------------------------------------------
+Your crate will need a unique name. While you’re working on a crate locally, you can name a crate whatever you’d like. However, crate names on crates.io are allocated on a first-come, first-served basis. Once a crate name is taken, no one else can publish a crate with that name. Before attempting to publish a crate, search for the name you want to use. If the name has been used, you will need to find another name and edit the name field in the Cargo.toml file under the [package] section to use the new name for publishing
+to use non-SPDX license put license in a file and include it in project then link it using "license-file" instead of "license"
+\/ THESE META DATA ARE REQUIRED IN cargo.toml \/
+[package]
+name = "guessing_game"
+version = "0.1.0"
+edition = "2021"
+description = "A fun game where you guess what number the computer has chosen."
+license = "MIT OR Apache-2.0"  // use SPDX identifiers here
+
+
+$ cargo publish ----> public package to carates.io
+Be careful, because a publish is permanent. The version can never be overwritten, and the code cannot be deleted. One major goal of crates.io is to act as a permanent archive of code so that builds of all projects that depend on crates from crates.io will continue to work. Allowing version deletions would make fulfilling that goal impossible. However, there is no limit to the number of crate versions you can publish.
+
+
+if you want to publish a new version change you crates version using semantic versioning and publish it to crates.io with cargo publish
+
+
+$ cargo yank --vers 1.0.1 ----> yank a previously published crate and prevent future projects from using it (projects that are currently depend on that crate can still use it)
+$ cargo yank --vers 1.0.1 --undo ----> re-enable a yanked crate
+A yank does not delete any code. It cannot, for example, delete accidentally uploaded secrets. If that happens, you must reset those secrets immediately.
+
+
+by default each crate can only contain one library crate inside
+if your library gets too big and you need to divide code into multiple library crate you can use workspaces
+
+
+A workspace is a set of packages that share the same Cargo.lock and output directory
+
+
+The cargo install command allows you to install and use binary crates locally
+Note that you can only install packages that have binary targets
+
+
+All binaries installed with cargo install are stored in the installation root’s bin folder. If you installed Rust using rustup.rs and don’t have any custom configurations, this directory will be $HOME/.cargo/bin. Ensure that directory is in your $PATH to be able to run programs you’ve installed with cargo install.
+
+
+Cargo is designed so you can extend it with new subcommands without having to modify Cargo. If a binary in your $PATH is named cargo-something, you can run it as if it was a Cargo subcommand by running cargo something. Custom commands like this are also listed when you run cargo --list. Being able to use cargo install to install extensions and then run them just like the built-in Cargo tools is a super convenient benefit of Cargo’s design!
