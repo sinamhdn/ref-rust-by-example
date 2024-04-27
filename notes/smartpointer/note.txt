@@ -1,0 +1,104 @@
+A pointer is a general concept for a variable that contains an address in memory.  The most common kind of pointer in Rust is a reference, References are indicated by the & symbol and borrow the value they point to. They don’t have any special capabilities other than referring to data, and have no overhead.
+
+
+Smart pointers, on the other hand, are data structures that act like a pointer but also have additional metadata and capabilities.
+
+
+A reference counting smart pointer type enables you to allow data to have multiple owners by keeping track of the number of owners and, when no owners remain, cleaning up the data.
+
+
+Rust, with its concept of ownership and borrowing, has an additional difference between references and smart pointers: while references only borrow data, in many cases, smart pointers own the data they point to.
+
+
+String and Vec are considered smart pointer because they have data that you can manipulate and the also store metadata
+
+
+Smart pointers are usually implemented using structs. Unlike an ordinary struct, smart pointers implement the Deref and Drop traits. The Deref trait allows an instance of the smart pointer struct to behave like a reference so you can write your code to work with either references or smart pointers. The Drop trait allows you to customize the code that’s run when an instance of the smart pointer goes out of scope.
+
+
+Given that the smart pointer pattern is a general design pattern used frequently in Rust, this chapter won’t cover every existing smart pointer. Many libraries have their own smart pointers, and you can even write your own. We’ll cover the most common smart pointers in the standard library:
+
+Box<T> for allocating values on the heap
+
+Rc<T>, a reference counting type that enables multiple ownership
+
+Ref<T> and RefMut<T>, accessed through RefCell<T>, a type that enforces the borrowing rules at runtime instead of compile time
+
+
+interior mutability pattern is when an immutable type exposes an API for mutating an interior value.
+
+
+The most straightforward smart pointer is a box, whose type is written Box<T>. Boxes allow you to store data on the heap rather than the stack. What remains on the stack is the pointer to the heap data
+
+
+Boxes don’t have performance overhead, other than storing their data on the heap instead of on the stack. But they don’t have many extra capabilities either. You’ll use them most often in these situations:
+
+--When you have a type whose size can’t be known at compile time and you want to use a value of that type in a context that requires an exact size
+--When you have a large amount of data and you want to transfer ownership but ensure the data won’t be copied when you do so
+--When you want to own a value and you care only that it’s a type that implements a particular trait rather than being of a specific type
+
+
+transferring ownership of a large amount of data can take a long time because the data is copied around on the stack. To improve performance in this situation, we can store the large amount of data on the heap in a box. Then, only the small amount of pointer data is copied around on the stack
+
+
+A value of recursive type can have another value of the same type as part of itself. Recursive types pose an issue because at compile time Rust needs to know how much space a type takes up. However, the nesting of values of recursive types could theoretically continue infinitely, so Rust can’t know how much space the value needs. Because boxes have a known size, we can enable recursive types by inserting a box in the recursive type definition.
+As an example of a recursive type, let’s explore the cons list. This is a data type commonly found in functional programming languages. The cons list type we’ll define is straightforward except for the recursion; therefore, the concepts in the example we’ll work with will be useful any time you get into more complex situations involving recursive types.
+
+
+A cons list is a data structure that comes from the Lisp programming language and its dialects and is made up of nested pairs, and is the Lisp version of a linked list. Its name comes from the cons function (short for “construct function”) in Lisp that constructs a new pair from its two arguments. By calling cons on a pair consisting of a value and another pair, we can construct cons lists made up of recursive pairs.
+Example ----> (1, (2, (3, Nil)))
+Each item in a cons list contains two elements: the value of the current item and the next item. The last item in the list contains only a value called Nil without a next item
+A cons list is produced by recursively calling the cons function
+The canonical name to denote the base case of the recursion is Nil. Note that this is not the same as the “null” or “nil”
+
+
+you can also implement Cons list using Generics
+
+
+Because a Box<T> is a pointer, Rust always knows how much space a Box<T> needs: a pointer’s size doesn’t change based on the amount of data it’s pointing to
+
+
+Boxes provide only the indirection and heap allocation; they don’t have any other special capabilities, like those we’ll see with the other smart pointer types. They also don’t have the performance overhead that these special capabilities incur, so they can be useful in cases like the cons list where the indirection is the only feature we need.
+
+
+The Box<T> type is a smart pointer because it implements the Deref trait, which allows Box<T> values to be treated like references. When a Box<T> value goes out of scope, the heap data that the box is pointing to is cleaned up as well because of the Drop trait implementation.
+
+
+Implementing the Deref trait allows you to customize the behavior of the dereference operator * (not to be confused with the multiplication or glob operator). By implementing Deref in such a way that a smart pointer can be treated like a regular reference, you can write code that operates on references and use that code with smart pointers too.
+
+
+YOU CAN CUSTOMIZE THE * OPERATOR BY IMPLEMENTING Deref OPERATOR
+
+
+Implicit Deref Coercions with Functions and Methods
+Deref coercion converts a reference to a type that implements the Deref trait into a reference to another type. For example, deref coercion can convert &String to &str because String implements the Deref trait such that it returns &str.
+
+
+deref coersion converts a reference to a type that implements the Deref trait into a reference to the variable that deref method returs
+
+
+Deref coercion is a convenience Rust performs on arguments to functions and methods, and works only on types that implement the Deref trait. It happens automatically when we pass a reference to a particular type’s value as an argument to a function or method that doesn’t match the parameter type in the function or method definition. A sequence of calls to the deref method converts the type we provided into the type the parameter needs.
+
+
+Deref coercion was added to Rust so that programmers writing function and method calls don’t need to add as many explicit references and dereferences with & and *. The deref coercion feature also lets us write more code that can work for either references or smart pointers.
+
+
+When the Deref trait is defined for the types involved, Rust will analyze the types and use Deref::deref as many times as necessary to get a reference to match the parameter’s type. The number of times that Deref::deref needs to be inserted is resolved at compile time, so there is no runtime penalty for taking advantage of deref coercion!
+
+
+How Deref Coercion Interacts with Mutability
+
+Similar to how you use the Deref trait to override the * operator on immutable references, you can use the DerefMut trait to override the * operator on mutable references.
+
+Rust does deref coercion when it finds types and trait implementations in three cases:
+
+From &T to &U when T: Deref<Target=U>
+From &mut T to &mut U when T: DerefMut<Target=U>
+From &mut T to &U when T: Deref<Target=U>
+The first two cases are the same as each other except that the second implements mutability. The first case states that if you have a &T, and T implements Deref to some type U, you can get a &U transparently. The second case states that the same deref coercion happens for mutable references.
+
+The third case is trickier: Rust will also coerce a mutable reference to an immutable one. But the reverse is not possible: immutable references will never coerce to mutable references. Because of the borrowing rules, if you have a mutable reference, that mutable reference must be the only reference to that data (otherwise, the program wouldn’t compile). Converting one mutable reference to one immutable reference will never break the borrowing rules. Converting an immutable reference to a mutable reference would require that the initial immutable reference is the only immutable reference to that data, but the borrowing rules don’t guarantee that. Therefore, Rust can’t make the assumption that converting an immutable reference to a mutable reference is possible.
+
+
+Drop trait is implemented to say what will happen if the data goes out of scope
+You can provide an implementation for the Drop trait on any type, and that code can be used to release resources like files or network connections.
