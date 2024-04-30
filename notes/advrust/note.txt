@@ -1,0 +1,30 @@
+--Unsafe Rust: how to opt out of some of Rust’s guarantees and take responsibility for manually upholding those guarantees
+
+--Advanced traits: associated types, default type parameters, fully qualified syntax, supertraits, and the newtype pattern in relation to traits
+
+--Advanced types: more about the newtype pattern, type aliases, the never type, and dynamically sized types
+
+--Advanced functions and closures: function pointers and returning closures
+
+--Macros: ways to define code that defines more code at compile time
+
+
+unsafe rust is like another version of rust that doesn't enforce ownership rule unsafe rust give use some powers over hardware but is risky to use
+
+
+if you want to write unsafe code use "unsafe" keyword
+with unsafe rust you can do these
+--Dereference a raw pointer
+--Call an unsafe function or method
+--Access or modify a mutable static variable
+--Implement an unsafe trait
+--Access fields of unions
+
+
+unsafe doesn't disable borrow checker and you still get some of common rust safety checks
+
+
+To isolate unsafe code as much as possible, it’s best to enclose unsafe code within a safe abstraction and provide a safe API
+
+
+The final action that works only with unsafe is accessing fields of a union. A union is similar to a struct, but only one declared field is used in a particular instance at one time. Unions are primarily used to interface with unions in C code. Accessing union fields is unsafe because Rust can’t guarantee the type of the data currently being stored in the union instance.
